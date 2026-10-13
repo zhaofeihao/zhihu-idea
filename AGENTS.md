@@ -1,4 +1,16 @@
-# eve Agent App
+# 灵感雷达开发约定
+
+用户批准的架构见 docs/DESIGN.md：TypeScript CLI、Supabase 托管 PostgreSQL、可替换数据源/模型/推送适配器。下方 Eve 约定仅适用于早前 agent/ 遗留模板；当前入口为 src/cli.ts，不再依赖 Eve。
+
+- 不引入本地持久化数据库；demo 和测试使用内存状态。
+- 默认 run 只生成预览；只有 --send 或 send 命令可以推送飞书。
+- 密钥只能从环境加载，不输出连接串、API key、Webhook、原始供应商错误响应。
+- 未经证实的知乎能力不能假设存在；摘要不能标记为全文。
+- 保持 schema、提示词与评分规则版本化；已完成结果与发送状态持久化。
+- 修改后执行 npm run typecheck、npm test、npm run build、npm run demo。
+- 测试用内存 PostgreSQL 和注入的 HTTP/模型，不调用真实付费 API 或发送消息。
+
+## 早前 Eve 模板约定（仅适用于 agent/）
 
 This project uses the eve framework: an agent is a directory of files under `agent/`, and eve compiles and runs it.
 

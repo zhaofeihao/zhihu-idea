@@ -1,0 +1,75 @@
+{
+  "namespace": "personal",
+  "timezone": "Asia/Shanghai",
+  "schedule": { "collect": "07:00", "deliver": "09:00" },
+  "limits": {
+    "candidates": 200,
+    "screenKeep": 30,
+    "deep": 15,
+    "brief": 8,
+    "queries": 20,
+    "exploration": 4,
+    "answerPages": 2,
+    "textChars": 4000,
+    "outputTokens": 4000,
+    "dailyTokens": 250000,
+    "dailyModelCalls": 80,
+    "dailySourceCalls": 40,
+    "dailyCost": null
+  },
+  "selection": { "minScore": 65, "minEvidence": 45, "auditRejected": 1 },
+  "models": {
+    "screen": {
+      "provider": "deepseek",
+      "model": "",
+      "inputPerMillion": null,
+      "outputPerMillion": null
+    },
+    "analyze": {
+      "provider": "deepseek",
+      "model": "",
+      "inputPerMillion": null,
+      "outputPerMillion": null
+    }
+  },
+  "discovery": {
+    "recommendations": false,
+    "hot": false,
+    "lowVoteMax": 100,
+    "queries": {
+      "business": [
+        "有哪些鲜为人知的需求催生了特殊服务",
+        "有什么小众商业模式解决了真实痛点",
+        "哪些行业有未被满足的需求",
+        "有哪些不靠规模也能持续经营的生意",
+        "日常生活中有什么可以改进的服务"
+      ],
+      "creative": [
+        "有哪些看似荒谬但可以验证的想法",
+        "有哪些令人眼前一亮的产品设计",
+        "不同领域知识组合产生了什么有趣发明",
+        "有哪些可以低成本尝试的创意",
+        "有哪些有趣的思想实验"
+      ],
+      "insight": [
+        "有哪些反直觉但有证据支持的现象",
+        "有什么冷门知识改变了你的思维方式",
+        "生活中有哪些被误解的科学原理",
+        "有哪些少有人了解的社会运作机制",
+        "有哪些常见说法其实忽略了关键条件"
+      ],
+      "story": [
+        "从事特殊职业的人有哪些真实经历",
+        "有哪些一线从业者才知道的行业细节",
+        "你经历过什么少有人遇到的事情",
+        "有哪些不为人知的职业日常",
+        "普通人有哪些意想不到的人生经历"
+      ],
+      "trading": [
+        "分享一下你的交易策略",
+        "散户生存指南",
+        "财富自由心得"
+      ]
+    }
+  }
+}

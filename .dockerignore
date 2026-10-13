@@ -1,0 +1,10 @@
+.git
+.env*
+certs
+node_modules
+dist
+coverage
+agent
+.eve
+.vercel
+.DS_Store

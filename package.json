@@ -1,31 +1,43 @@
 {
   "name": "zhihu-idea",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "private": true,
   "type": "module",
-  "imports": {
-    "#*": "./agent/*",
-    "#evals/*": "./evals/*"
-  },
   "scripts": {
-    "build": "eve build",
-    "deploy": "eve deploy",
-    "dev": "eve dev",
-    "eval": "eve eval",
-    "start": "eve start",
-    "typecheck": "tsc"
+    "dev": "tsx src/cli.ts --help",
+    "run": "tsx src/cli.ts run",
+    "demo": "tsx src/cli.ts demo",
+    "preview": "tsx src/cli.ts preview",
+    "service": "tsx src/cli.ts service",
+    "db:migrate": "tsx src/cli.ts migrate",
+    "doctor": "tsx src/cli.ts doctor",
+    "feedback": "tsx src/cli.ts feedback",
+    "send": "tsx src/cli.ts send",
+    "maintenance": "tsx src/cli.ts maintenance",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/cli.js service",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "format": "prettier --write src tests config prompts docs README.md package.json tsconfig*.json compose.yaml",
+    "format:check": "prettier --check src tests config prompts docs README.md package.json tsconfig*.json compose.yaml"
   },
   "dependencies": {
-    "@vercel/connect": "2.2.0",
+    "@ai-sdk/deepseek": "^3.0.63",
+    "@ai-sdk/openai": "^4.0.91",
     "ai": "^7.0.128",
-    "eve": "^0.76.0",
-    "zod": "4.5.4"
+    "dotenv": "^17.2.3",
+    "pg": "^8.16.3",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@types/node": "24.x",
-    "typescript": "7.0.2"
+    "@electric-sql/pglite": "^0.5.8",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.5",
+    "prettier": "3.9.10",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": "24.x"
   }
-
 }

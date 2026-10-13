@@ -1,0 +1,27 @@
+services:
+  radar:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./config:/app/config:ro
+      # 如需数据库 CA：创建 certs/supabase-ca.crt，并在 .env 设置
+      # DATABASE_CA_FILE=/app/certs/supabase-ca.crt，然后取消下一行注释。
+      # - ./certs:/app/certs:ro
+    mem_limit: 512m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
