@@ -2,7 +2,7 @@ import { createHmac } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import {
   hash,
-  labels,
+  labelOf,
   sourceTime,
   type Brief,
   type BriefItem,
@@ -17,10 +17,14 @@ export function signature(timestamp: string, secret: string) {
 }
 const escape = (text: string) =>
   text.replace(/[<>]/g, "").replace(/([\\*\[\]_`])/g, "\\$1");
-function elements(item: BriefItem, index: number): Record<string, unknown>[] {
+function elements(
+  item: BriefItem,
+  index: number,
+  labelMap?: Record<string, string>,
+): Record<string, unknown>[] {
   const a = item.analysis,
     c = item.content;
-  const text = `**${index + 1}. ${escape(a.title)}** · ${labels[a.category]}\n${escape(a.summary)}\n\n**值得读** ${escape(a.whyRead)}${a.extension ? `\n**AI 推演** ${escape(a.extension)}` : ""}${a.claimType === "hypothesis" ? "\n创意假设，非已发生事实" : ""}${a.caveat ? `\n阅读提示：${escape(a.caveat)}` : ""}\n\n${escape(c.author || "作者未提供")} · ${sourceTime(c)} · ${c.scope === "full_text" ? "正文" : "仅依据摘要/截取文本"} · 编号 ${c.id.slice(0, 12)}`;
+  const text = `**${index + 1}. ${escape(a.title)}** · ${labelOf(a.category, labelMap)}\n${escape(a.summary)}\n\n**值得读** ${escape(a.whyRead)}${a.extension ? `\n**AI 推演** ${escape(a.extension)}` : ""}${a.claimType === "hypothesis" ? "\n创意假设，非已发生事实" : ""}${a.caveat ? `\n阅读提示：${escape(a.caveat)}` : ""}\n\n${escape(c.author || "作者未提供")} · ${sourceTime(c)} · ${c.scope === "full_text" ? "正文" : "仅依据摘要/截取文本"} · 编号 ${c.id.slice(0, 12)}`;
   return [
     { tag: "markdown", content: text },
     {
@@ -77,7 +81,7 @@ export function cards(brief: Brief): Record<string, unknown>[] {
       content: `精选 ${brief.items.length} 条${brief.warnings?.length ? " · 本次覆盖有限，详见运行日志" : ""}${!brief.items.length ? (brief.warnings?.length ? "\n已分析部分暂未选出合格内容，不代表当天没有好内容。" : "\n今天没有足够好的内容，不凑数。") : ""}`,
     },
   ]);
-  brief.items.forEach((item, i) => add(elements(item, i)));
+  brief.items.forEach((item, i) => add(elements(item, i, brief.labels)));
   if (current.length) pages.push(current);
   return pages.map((page, i) => payload(brief, page, i + 1, pages.length));
 }

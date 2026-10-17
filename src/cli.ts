@@ -2,7 +2,7 @@ import "dotenv/config";
 import { parseArgs } from "node:util";
 import { readFile } from "node:fs/promises";
 import { loadConfig, requireEnv, validateModels, safeError } from "./config.js";
-import { markdown, categories } from "./domain.js";
+import { markdown } from "./domain.js";
 import { connect } from "./storage.js";
 import { MemoryStore } from "./memory-store.js";
 import { Pipeline, withLease } from "./pipeline.js";
@@ -29,7 +29,7 @@ const help = `灵感雷达 · 本地手动执行 / Supabase / 飞书
   npm run service                       常驻定时；仅此入口启动调度
 
 所有真实模式使用 Supabase。模型 ID 在 .env 设置；--send 才发送。
---stage=analyze 必须配合 --resume；--category=${categories.join("|")}。
+--stage=analyze 必须配合 --resume；--category 取配置 discovery.queries 中的某个话题。
 rating 可为 interesting / neutral / skip。Ctrl+C 停止，已完成结果保留。`;
 const controller = new AbortController();
 process.once("SIGINT", () => controller.abort());
@@ -83,15 +83,15 @@ async function main() {
     c.limits.candidates = n;
   }
   if (values.category) {
-    if (!categories.includes(values.category as (typeof categories)[number]))
-      throw new Error("--category 无效");
-    c.category = values.category as (typeof categories)[number];
+    if (!(values.category in c.discovery.queries))
+      throw new Error("--category 必须是 discovery.queries 中配置的话题");
+    c.category = values.category;
   }
   if (command === "demo") {
     const { DemoSource, DemoModel } = await import("./demo.js");
     const store = new MemoryStore();
     const model = new DemoModel();
-    c.limits.queries = categories.length;
+    c.limits.queries = Object.keys(c.discovery.queries).length;
     c.limits.candidates = 20;
     const result = await new Pipeline(store, new DemoSource(), model).run(c, {
       signal: controller.signal,
@@ -138,12 +138,13 @@ async function main() {
       console.log(
         "知乎额度：" + JSON.stringify(await source.quota(controller.signal)),
       );
+      const [probeTopic] = Object.keys(c.discovery.queries);
       const page = await source.fetch(
         {
           id: "doctor",
           kind: "search",
-          text: c.discovery.queries.insight[0],
-          category: "insight",
+          text: c.discovery.queries[probeTopic][0],
+          category: probeTopic,
         },
         2,
         controller.signal,

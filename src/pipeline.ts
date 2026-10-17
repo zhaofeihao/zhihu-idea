@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import {
-  categories,
   hash,
   score,
   selectBrief,
   screenSchema,
   normalizeTopic,
+  builtinLabels,
   type Brief,
   type BriefItem,
   type Content,
@@ -36,7 +36,7 @@ export class BudgetStop extends Error {
 export function queryPlan(c: Config, date: string): Query[] {
   const rotation = Math.floor(Date.parse(date) / 86400000);
   const queries: Query[] = [];
-  const active = c.category ? [c.category] : categories;
+  const active = c.category ? [c.category] : Object.keys(c.discovery.queries);
   for (let i = 0; i < c.limits.queries; i++) {
     const category = active[i % active.length],
       pool = c.discovery.queries[category];
@@ -63,7 +63,7 @@ export function queryPlan(c: Config, date: string): Query[] {
       });
   }
   if (c.discovery.hot)
-    queries.push({ id: "hot", kind: "hot", text: "", category: "insight" });
+    queries.push({ id: "hot", kind: "hot", text: "", category: active[0] });
   return queries;
 }
 export async function withLease<T>(
@@ -268,6 +268,14 @@ export class Pipeline {
       run.config.selection.minScore,
       run.config.selection.minEvidence,
     );
+    // 快照入选话题的展示名，预览/发送即使之后改了配置也稳定。
+    const labelMap: Record<string, string> = {};
+    for (const key of [
+      ...Object.keys(run.config.discovery.queries),
+      ...items.map((x) => x.analysis.category),
+    ])
+      labelMap[key] =
+        run.config.topics?.[key]?.label ?? builtinLabels[key] ?? key;
     const brief: Brief = {
       id: run.id,
       date: run.date,
@@ -276,6 +284,7 @@ export class Pipeline {
       status: items.length ? "ready" : "empty",
       createdAt: new Date().toISOString(),
       warnings: run.errors.slice(-3),
+      labels: labelMap,
     };
     await this.store.saveBrief(brief);
     run.analyzed = true;
@@ -393,7 +402,9 @@ export class Pipeline {
       try {
         value =
           phase === "screen"
-            ? screenSchema.parse(result.value)
+            ? screenSchema(Object.keys(run.config.discovery.queries)).parse(
+                result.value,
+              )
             : validateAnalysis(result.value, item, run.config);
       } catch (cause) {
         // Structurally returned but unusable (bad schema / fabricated evidence):
@@ -526,7 +537,7 @@ export class Pipeline {
         results.push({
           content: { ...item, text: "" },
           analysis: a,
-          score: score(a),
+          score: score(a, run.config.topics),
         });
     }
     return results;

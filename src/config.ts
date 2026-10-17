@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
-import { categories } from "./domain.js";
 
 const model = z.object({
   provider: z.enum(["deepseek", "openai"]),
@@ -8,10 +7,30 @@ const model = z.object({
   inputPerMillion: z.number().nonnegative().nullable(),
   outputPerMillion: z.number().nonnegative().nullable(),
 });
+// 话题键：字母数字下划线短横，含中文；用于内置五类与自定义话题。
+const topicKey = z.string().regex(/^[\w\u4e00-\u9fa5-]{1,40}$/);
+const topicWeights = z
+  .object({
+    novelty: z.number().int().min(0).max(100),
+    inspiration: z.number().int().min(0).max(100),
+    business: z.number().int().min(0).max(100),
+    evidence: z.number().int().min(0).max(100),
+    quality: z.number().int().min(0).max(100),
+  })
+  .refine(
+    (w) =>
+      w.novelty + w.inspiration + w.business + w.evidence + w.quality === 100,
+    { message: "话题权重五个维度之和必须为 100" },
+  );
+const topicMeta = z.object({
+  label: z.string().min(1).max(20).optional(),
+  description: z.string().max(400).optional(),
+  weights: topicWeights.optional(),
+});
 export const configSchema = z.object({
   namespace: z.string().regex(/^[a-zA-Z0-9_-]{1,40}$/),
   timezone: z.literal("Asia/Shanghai"),
-  category: z.enum(categories).nullable().default(null),
+  category: topicKey.nullable().default(null),
   schedule: z.object({
     collect: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
     deliver: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
@@ -20,7 +39,7 @@ export const configSchema = z.object({
     candidates: z.number().int().min(1).max(300),
     screenKeep: z.number().int().min(1).max(100),
     deep: z.number().int().min(1).max(50),
-    brief: z.number().int().min(categories.length).max(10),
+    brief: z.number().int().min(1).max(10),
     queries: z.number().int().min(1).max(100),
     exploration: z.number().int().min(0).max(10),
     answerPages: z.number().int().min(1).max(5),
@@ -41,11 +60,15 @@ export const configSchema = z.object({
     recommendations: z.boolean(),
     hot: z.boolean(),
     lowVoteMax: z.number().int().nonnegative(),
-    queries: z.record(
-      z.enum(categories),
-      z.array(z.string().min(1).max(120)).min(1),
-    ),
+    // 话题自由定义：可只保留关心的话题（含内置五类）、也可新增自定义话题，每个话题至少 1 条查询、数量不限。
+    queries: z
+      .record(topicKey, z.array(z.string().min(1).max(120)).min(1))
+      .refine((q) => Object.keys(q).length >= 1, {
+        message: "discovery.queries 至少配置一个话题",
+      }),
   }),
+  // 话题元数据：展示名、给模型的含义说明、评分权重；未配置则用内置默认或通用默认。
+  topics: z.record(topicKey, topicMeta).optional(),
 });
 export type Config = z.infer<typeof configSchema>;
 export async function loadConfig(
@@ -55,6 +78,10 @@ export async function loadConfig(
   const c = configSchema.parse(JSON.parse(await readFile(path, "utf8")));
   if (c.schedule.deliver <= c.schedule.collect)
     throw new Error("推送时刻必须晚于同日采集时刻");
+  if (c.category && !(c.category in c.discovery.queries))
+    throw new Error(
+      `category=${c.category} 不在 discovery.queries 配置的话题中`,
+    );
   if (env.RADAR_NAMESPACE)
     c.namespace = configSchema.shape.namespace.parse(env.RADAR_NAMESPACE);
   for (const stage of ["screen", "analyze"] as const) {

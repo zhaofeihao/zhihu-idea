@@ -84,7 +84,7 @@ test("交易评分侧重启发、证据与质量，不依赖宣称收益或商�
       quality: 90,
     },
   };
-  assert.equal(score(trading), 67);
+  assert.equal(score(trading), 58);
   assert.ok(
     score(trading) >
       score({ ...trading, scores: { ...trading.scores, evidence: 20 } }),

@@ -10,10 +10,25 @@ import {
   scoringVersion,
   screenSchema,
   hash,
+  builtinLabels,
+  builtinDescriptions,
   type Content,
   type Screening,
   type Analysis,
 } from "./domain.js";
+
+// 生效话题 = 配置里 discovery.queries 的键；category 只能取其中之一。
+export function activeTopics(c: Config): string[] {
+  return Object.keys(c.discovery.queries);
+}
+// 给模型用于分类的话题清单（键 + 展示名 + 含义）。
+function topicGuide(c: Config) {
+  return activeTopics(c).map((key) => ({
+    key,
+    label: c.topics?.[key]?.label ?? builtinLabels[key] ?? key,
+    description: c.topics?.[key]?.description ?? builtinDescriptions[key] ?? "",
+  }));
+}
 
 export type Phase = "screen" | "analyze";
 export interface ModelResult {
@@ -65,8 +80,8 @@ const promptTexts: Record<Phase, string> = {
   ),
 };
 const promptVersions: Record<Phase, string> = {
-  screen: "screen-v3",
-  analyze: "analyze-v3",
+  screen: "screen-v4",
+  analyze: "analyze-v4",
 };
 export function prompt(
   phase: Phase,
@@ -84,6 +99,8 @@ export function prompt(
       publishedAt: item.publishedAt,
       editedAt: item.editedAt ?? null,
       userFeedback: preferences,
+      // category 必须从本清单中选择其一；label/description 说明每个话题的含义。
+      topics: topicGuide(c),
     }),
   };
 }
@@ -115,11 +132,16 @@ export function reservation(
 ) {
   const p = prompt(phase, item, preferences, c);
   // UTF-8 bytes + schema + protocol margin is a conservative reservation, not exact tokenization.
+  const topics = activeTopics(c);
   const input =
     Buffer.byteLength(
       JSON.stringify(p) +
         JSON.stringify(
-          z.toJSONSchema(phase === "screen" ? screenSchema : analysisSchema),
+          z.toJSONSchema(
+            phase === "screen"
+              ? screenSchema(topics)
+              : analysisSchema(topics),
+          ),
         ),
     ) + 1500;
   const output = c.limits.outputTokens;
@@ -178,7 +200,10 @@ export class AiModel implements Model {
         model,
         ...prompt(phase, item, preferences, c),
         output: Output.object<Screening | Analysis>({
-          schema: phase === "screen" ? screenSchema : analysisSchema,
+          schema:
+            phase === "screen"
+              ? screenSchema(activeTopics(c))
+              : analysisSchema(activeTopics(c)),
         }),
         maxOutputTokens: c.limits.outputTokens,
         maxRetries: 0,
@@ -210,7 +235,7 @@ export function validateAnalysis(
   item: Content,
   c: Config,
 ): Analysis {
-  const a = analysisSchema.parse(value);
+  const a = analysisSchema(activeTopics(c)).parse(value);
   const text = item.text.slice(0, c.limits.textChars);
   if (a.evidenceQuotes.some((quote) => !text.includes(quote)))
     throw new Error("模型证据摘录不在输入原文中，该结果未缓存或推荐");
